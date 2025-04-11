@@ -1,42 +1,69 @@
 import numpy as np
 import time
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class FrameElement:
-    # Класс, содержаций информацию о конкретном кадре видеопотока
     def __init__(
         self,
         source: str,
         frame: np.ndarray,
         timestamp: float,
-        frame_num: float,
+        frame_num: int,
         roads_info: dict,
-        frame_result: np.ndarray | None = None,
-        detected_conf: list | None = None,
-        detected_cls: list | None = None,
-        detected_xyxy: list[list] | None = None,
-        tracked_conf: list | None = None,
-        tracked_cls: list | None = None,
-        tracked_xyxy: list[list] | None = None,
-        id_list: list | None = None,
-        buffer_tracks: dict | None = None,
+        file_id: str,  # Уникальный идентификатор файла
+        data: dict = None,  # Дополнительные данные (по умолчанию пустой словарь)
+        frame_result: np.ndarray = None,
+        detected_conf: list = None,
+        detected_cls: list = None,
+        detected_xyxy: list = None,
+        tracked_conf: list = None,
+        tracked_cls: list = None,
+        tracked_xyxy: list = None,
+        id_list: list = None,
+        buffer_tracks: dict = None,
     ) -> None:
-        self.source = source  # Путь к видео или номер камеры с которой берем поток
-        self.frame = frame  # Кадр bgr формата 
-        self.timestamp = timestamp  # Значение времени с начала потока (в секундах)
-        self.frame_num = frame_num  # Нормер кадра с потока
-        self.roads_info = roads_info  # Словарь с координатми дорог, примыкающих к участку кругового движения
-        self.frame_result = frame_result  # Итоговый обработанный кадр
-        self.timestamp_date = time.time()  # Время в момент обработки кадра unix формат (в секундах)
-        # Результаты на выходе с YOLO:
-        self.detected_conf = detected_conf  # Список уверенностей задетектированных объектов
-        self.detected_cls = detected_cls  # Список классов задетектированных объектов
-        self.detected_xyxy = detected_xyxy  # Список списков с координатами xyxy боксов
-        # Результаты корректировки трекинг алгоритмом:
-        self.tracked_conf = tracked_conf  # Список уверенностей задетектированных объектов
-        self.tracked_cls = tracked_cls  # Список классов задетектированных объектов
-        self.tracked_xyxy = tracked_xyxy  # Список списков с координатами xyxy боксов    
-        self.id_list = id_list  # Список обнаруженных id трекуемых объектов
-        # Постобработка кадра:
-        self.buffer_tracks = buffer_tracks  # Буфер актуальных треков за выбранное время анализа
-        self.info = {}  # Словарь с результирующей статистикой (загруженность дорог + число машин)
-        self.send_info_of_frame_to_db = False  # Флаг того, будет ли с это кадра инфа отправлена в бд
+        self.source = source
+        self.frame = frame
+        self.timestamp = timestamp
+        self.frame_num = frame_num
+        self.roads_info = roads_info
+        self.file_id = file_id  # Уникальный идентификатор файла
+        self.data = data if data is not None else {}  # Дополнительные данные
+
+        # Убедимся, что в data есть file_id
+        if "file_id" not in self.data:
+            self.data["file_id"] = file_id
+
+        self.frame_result = frame_result
+        self.timestamp_date = time.time()  # Текущее время создания объекта
+        self.detected_conf = detected_conf if detected_conf is not None else []
+        self.detected_cls = detected_cls if detected_cls is not None else []
+        self.detected_xyxy = detected_xyxy if detected_xyxy is not None else []
+        self.tracked_conf = tracked_conf if tracked_conf is not None else []
+        self.tracked_cls = tracked_cls if tracked_cls is not None else []
+        self.tracked_xyxy = tracked_xyxy if tracked_xyxy is not None else []
+        self.id_list = id_list if id_list is not None else []
+        self.buffer_tracks = buffer_tracks if buffer_tracks is not None else {}
+        self.send_info_of_frame_to_db = True  # Флаг для отправки данных в базу
+        logger.debug(f"Created FrameElement with file_id={file_id}, timestamp={timestamp}")
+
+    def to_dict(self) -> dict:
+        return {
+            "source": self.source,
+            "timestamp": self.timestamp,
+            "frame_num": self.frame_num,
+            "roads_info": self.roads_info,
+            "file_id": self.file_id,
+            "data": self.data,
+            "detected_conf": self.detected_conf,
+            "detected_cls": self.detected_cls,
+            "detected_xyxy": self.detected_xyxy,
+            "tracked_conf": self.tracked_conf,
+            "tracked_cls": self.tracked_cls,
+            "tracked_xyxy": self.tracked_xyxy,
+            "id_list": self.id_list,
+            "buffer_tracks": self.buffer_tracks,
+        }

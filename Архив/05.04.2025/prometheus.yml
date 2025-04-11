@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 5s  # Интервал сбора метрик (5 секунд)
+
+scrape_configs:
+  - job_name: 'api_metrics'  # Имя задачи для сбора метрик
+    static_configs:
+      - targets: ['localhost:8000']  # Адрес вашего API

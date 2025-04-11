@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        button, input {
+            padding: 10px;
+            margin: 10px 0;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        table th {
+            background-color: #f4f4f4;
+        }
+        .grafana-link {
+            margin-top: 20px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Tester</h1>
+
+    <!-- Кнопка для проверки API -->
+    <button id="callApiButton">Check API</button>
+
+    <!-- Форма для загрузки файла -->
+    <h2>Upload a Video</h2>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" required />
+        <button type="submit">Upload</button>
+    </form>
+
+    <!-- Отображение статуса обработки -->
+    <h2>Processing Status</h2>
+    <div id="status"></div>
+
+    <!-- Отображение ответа -->
+    <pre id="response"></pre>
+
+    <!-- Форма для проверки статуса -->
+    <h2>Check Processing Status</h2>
+    <form id="statusForm">
+        <input type="text" id="fileIdInput" placeholder="Enter File ID" required />
+        <button type="submit">Check Status</button>
+    </form>
+
+    <div id="statusResult"></div>
+
+    <!-- Таблица с результатами -->
+    <h2>Results Table</h2>
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>File ID</th>
+                <th>Timestamp</th>
+                <th>Data</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Данные будут загружены здесь -->
+        </tbody>
+    </table>
+
+    <!-- Ссылка на Grafana -->
+    <div class="grafana-link">
+        <a href="http://localhost:3000" target="_blank">Go to Grafana Dashboard</a>
+    </div>
+
+    <script>
+        const apiBaseUrl = 'http://localhost:8000'; // Обновите порт
+
+        // Проверка API
+        document.getElementById('callApiButton').addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${apiBaseUrl}/`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('response').textContent = 'Error: ' + error.message;
+            }
+        });
+
+        // Загрузка файла
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/process`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                document.getElementById('status').textContent = `Status: ${data.status}, ID: ${data.id}`;
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+            }
+        });
+
+        // Проверка статуса обработки
+        document.getElementById('statusForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileId = document.getElementById('fileIdInput').value;
+
+            if (!fileId) {
+                alert('Please enter a File ID.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/status/${fileId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                document.getElementById('statusResult').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('statusResult').textContent = 'Error: ' + error.message;
+            }
+        });
+
+        // Загрузка данных для таблицы
+        async function loadResults() {
+            try {
+                const response = await fetch(`${apiBaseUrl}/results`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                const tbody = document.querySelector('#resultsTable tbody');
+                tbody.innerHTML = ''; // Очистка таблицы
+
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${row.id}</td>
+                        <td>${row.file_id}</td>
+                        <td>${row.timestamp}</td>
+                        <td>${JSON.stringify(row.data)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Error loading results:', error);
+            }
+        }
+
+        // Загрузка данных при загрузке страницы
+        window.onload = () => {
+            loadResults();
+        };
+    </script>
+</body>
+</html>

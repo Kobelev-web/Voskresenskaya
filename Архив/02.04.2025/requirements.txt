@@ -1,0 +1,13 @@
+flask==2.0.0
+werkzeug==2.2.3
+fastapi
+uvicorn
+ultralytics
+psycopg2-binary
+prometheus-client
+hydra-core
+shapely
+lap
+cython_bbox
+werkzeug==2.2.3
+python-multipart

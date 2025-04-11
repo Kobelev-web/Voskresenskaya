@@ -1,13 +1,23 @@
 services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"  # Prometheus доступен на порту 9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml  # Примонтируйте конфигурационный файл
+    networks:
+      - backend_network
+
   pg_data_wh:
     image: postgres:15
-    container_name: "pg_data_wh_${HOSTNAME}"
+    container_name: pg_data_wh
     environment:
       POSTGRES_DB: traffic_analyzer_db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: pwd
     ports:
-      - "5488:5432"
+      - "5488:5432"  # PostgreSQL проброшен на порт 5488
     volumes:
       - pg_data_wh_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,8 +37,9 @@ services:
       POSTGRES_PASSWORD: grafana_pwd
     volumes:
       - pg_grafana_data:/var/lib/postgresql/data
+      - ./init_grafana.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U grafana_user -d grafana_db"]
+      test: ["CMD-SHELL", "pg_isready -U grafana_user -d grafana_db || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -48,7 +59,7 @@ services:
       pg_grafana:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "3000:3000"  # Grafana доступна на порту 3000
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
@@ -60,15 +71,16 @@ services:
     volumes:
       - ./uploads:/usr/src/app/uploads
       - ./results:/usr/src/app/results
-      - ./weights/yolov8m.pt:/usr/src/app/yolov8m.pt
+      - ./weights:/usr/src/app/weights
     networks:
       - backend_network
+    command: ["python", "/usr/src/app/app.py"]
 
   api:
     build: .
     container_name: api
     ports:
-      - "5000:5000"
+      - "8000:8001"  # API доступно на порту 8000
     volumes:
       - ./uploads:/app/uploads
       - ./results:/app/results

@@ -1,15 +1,15 @@
 import random
 import cv2
 import numpy as np
-
 from utils_local.utils import profile_time, FPS_Counter
 from elements.VideoEndBreakElement import VideoEndBreakElement
 from elements.FrameElement import FrameElement
+import logging
 
+# Инициализация логгера
+logger = logging.getLogger(__name__)
 
 class ShowNode:
-    """Модуль отвечающий, за визуализацию результатов"""
-
     def __init__(self, config) -> None:
         data_colors = config["general"]["colors_of_roads"]
         self.colors_roads = {key: tuple(value) for key, value in data_colors.items()}
@@ -50,6 +50,10 @@ class ShowNode:
         assert isinstance(
             frame_element, FrameElement
         ), f"ShowNode | Неправильный формат входного элемента {type(frame_element)}"
+
+        # Логирование детектированных объектов
+        logger.debug(f"Detected objects: {frame_element.detected_xyxy}")
+        logger.debug(f"Tracked objects: {frame_element.tracked_xyxy}")
 
         frame_result = frame_element.frame.copy()
 

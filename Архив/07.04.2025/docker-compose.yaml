@@ -1,0 +1,99 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"  # Prometheus доступен на порту 9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml  # Примонтируйте конфигурационный файл
+    networks:
+      - backend_network
+
+  pg_data_wh:
+    image: postgres:15
+    container_name: pg_data_wh
+    environment:
+      POSTGRES_DB: traffic_analyzer_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pwd
+    ports:
+      - "5488:5432"  # PostgreSQL проброшен на порт 5488
+    volumes:
+      - pg_data_wh_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d traffic_analyzer_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend_network
+
+  pg_grafana:
+    image: postgres:15
+    container_name: pg_grafana
+    environment:
+      POSTGRES_DB: grafana_db
+      POSTGRES_USER: grafana_user
+      POSTGRES_PASSWORD: grafana_pwd
+    volumes:
+      - pg_grafana_data:/var/lib/postgresql/data
+      - ./init_grafana.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grafana_user -d grafana_db || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: pg_grafana
+      GF_DATABASE_NAME: grafana_db
+      GF_DATABASE_USER: grafana_user
+      GF_DATABASE_PASSWORD: grafana_pwd
+    depends_on:
+      pg_grafana:
+        condition: service_healthy
+    ports:
+      - "3000:3000"  # Grafana доступна на порту 3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - backend_network
+
+  yolo:
+    image: ultralytics/ultralytics:latest
+    container_name: yolo
+    volumes:
+      - ./uploads:/usr/src/app/uploads
+      - ./results:/usr/src/app/results
+      - ./weights/yolov8m.pt:/usr/src/app/yolov8m.pt
+    networks:
+      - backend_network
+
+  api:
+    build: .
+    container_name: api
+    ports:
+      - "8000:8001"  # API доступно на порту 8000
+    volumes:
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+    depends_on:
+      pg_data_wh:
+        condition: service_healthy
+    networks:
+      - backend_network
+
+volumes:
+  pg_data_wh_data:
+  pg_grafana_data:
+  grafana_data:
+
+networks:
+  backend_network:
+    driver: bridge
